@@ -2,8 +2,8 @@
  * Lesson6-绘制颜色渐变矩形-attribute/varying/precision
  * @Author: lzmxqh 
  * @Date: 2021-03-20 01:13:27 
- * @Last Modified by:   lzmxqh 
- * @Last Modified time: 2021-03-20 01:13:27 
+ * @Last Modified by: lzmxqh
+ * @Last Modified time: 2021-03-20 17:28:31
  */
 /**顶点着色器 */ 
 var vs = `
@@ -71,7 +71,8 @@ window.onload = function () {
     
     webgl.linkProgram(programObject);
     if (!webgl.getProgramParameter(programObject, webgl.LINK_STATUS)) {
-        alert("error: programObject");
+        var err = webgl.getProgramInfoLog(programObject);
+        alert(err);
         return;
     }
     webgl.useProgram(programObject);

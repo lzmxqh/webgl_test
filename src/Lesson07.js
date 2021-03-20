@@ -2,8 +2,8 @@
  * Lesson7-绘制矩形-uniform
  * @Author: lzmxqh 
  * @Date: 2021-03-20 01:13:18 
- * @Last Modified by:   lzmxqh 
- * @Last Modified time: 2021-03-20 01:13:18 
+ * @Last Modified by: lzmxqh
+ * @Last Modified time: 2021-03-20 17:54:50
  */
 /**顶点着色器 */ 
 var vs = `
@@ -30,7 +30,7 @@ var programObject = null;
 var triangleBuffer = null;
 var indexBuffer = null;
 var v3PositionIndex = 0;
-var uniformColor = 1;
+var uniformColor = 0;
 
 window.onload = function () {
     //获取canvas元素
@@ -65,7 +65,8 @@ window.onload = function () {
     
     webgl.linkProgram(programObject);
     if (!webgl.getProgramParameter(programObject, webgl.LINK_STATUS)) {
-        alert("error: programObject");
+        var err = webgl.getProgramInfoLog(programObject);
+        alert(err);
         return;
     }
     webgl.useProgram(programObject);
@@ -82,7 +83,7 @@ window.onload = function () {
         0, 2, 3
     ];
 
-    v3PositionIndex = webgl.getVertexAttrib(programObject,"v3Position");
+    webgl.bindAttribLocation(programObject, v3PositionIndex, "v3Position");
     uniformColor = webgl.getUniformLocation(programObject, "color"); 
     webgl.uniform4f(uniformColor, 1, 1, 0, 1);
     
