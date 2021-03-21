@@ -1,21 +1,9 @@
-import * as glMatrix from "../node_modules/gl-matrix/esm/common.js";
-import * as mat2 from "../node_modules/gl-matrix/esm/mat2.js";
-import * as mat2d from "../node_modules/gl-matrix/esm/mat2d.js";
-import * as mat3 from "../node_modules/gl-matrix/esm/mat3.js";
-import * as mat4 from "../node_modules/gl-matrix/esm/mat4.js";
-import * as quat from "../node_modules/gl-matrix/esm/quat.js";
-import * as quat2 from "../node_modules/gl-matrix/esm/quat2.js";
-import * as vec2 from "../node_modules/gl-matrix/esm/vec2.js";
-import * as vec3 from "../node_modules/gl-matrix/esm/vec3.js";
-import * as vec4 from "../node_modules/gl-matrix/esm/vec4.js";
-export { glMatrix, mat2, mat2d, mat3, mat4, quat, quat2, vec2, vec3, vec4 };
-
 /**
- * Lesson8-线面
+ * Lesson10-线面
  * @Author: lzmxqh 
- * @Date: 2021-03-21 00:10:15 
+ * @Date: 2021-03-21 19:05:54 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-03-21 19:03:25
+ * @Last Modified time: 2021-03-21 23:53:52
  */
 /**顶点着色器 */ 
 var vs = `
@@ -45,6 +33,7 @@ var v3PositionIndex = 0;
 var uniformColor = 0;
 var uniformProj = 0;
 
+var mat4 = glMatrix.mat4;
 var projectMat = null;
 
 function init() {
@@ -124,7 +113,6 @@ function init() {
 }
 
 function onStart() {
-    // addScript("../node_modules/gl-matrix/esm/mat4.js");
     init();
     onRender();
 }

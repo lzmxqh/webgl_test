@@ -1,32 +1,21 @@
-import * as glMatrix from "../node_modules/gl-matrix/esm/common.js";
-import * as mat2 from "../node_modules/gl-matrix/esm/mat2.js";
-import * as mat2d from "../node_modules/gl-matrix/esm/mat2d.js";
-import * as mat3 from "../node_modules/gl-matrix/esm/mat3.js";
-import * as mat4 from "../node_modules/gl-matrix/esm/mat4.js";
-import * as quat from "../node_modules/gl-matrix/esm/quat.js";
-import * as quat2 from "../node_modules/gl-matrix/esm/quat2.js";
-import * as vec2 from "../node_modules/gl-matrix/esm/vec2.js";
-import * as vec3 from "../node_modules/gl-matrix/esm/vec3.js";
-import * as vec4 from "../node_modules/gl-matrix/esm/vec4.js";
-export { glMatrix, mat2, mat2d, mat3, mat4, quat, quat2, vec2, vec3, vec4 };
-
-// function addScript(url) {
-//     document.write("<script language='javascript' src=" + url + "></script");
-// }
-
-// function addScript(url) {
-//     var script=document.createElement("script"); 
-//     script.setAttribute("type","text/javascript"); 
-//     script.setAttribute("src",url); 
-//     document.getElementsByTagName("head")[0].appendChild(script); 
-// }
+// import * as glMatrix from "../node_modules/gl-matrix/esm/common.js";
+// import * as mat2 from "../node_modules/gl-matrix/esm/mat2.js";
+// import * as mat2d from "../node_modules/gl-matrix/esm/mat2d.js";
+// import * as mat3 from "../node_modules/gl-matrix/esm/mat3.js";
+// import * as mat4 from "../node_modules/gl-matrix/esm/mat4.js";
+// import * as quat from "../node_modules/gl-matrix/esm/quat.js";
+// import * as quat2 from "../node_modules/gl-matrix/esm/quat2.js";
+// import * as vec2 from "../node_modules/gl-matrix/esm/vec2.js";
+// import * as vec3 from "../node_modules/gl-matrix/esm/vec3.js";
+// import * as vec4 from "../node_modules/gl-matrix/esm/vec4.js";
+// export { glMatrix, mat2, mat2d, mat3, mat4, quat, quat2, vec2, vec3, vec4 };
 
 /**
- * Lesson8-投影矩阵
+ * Lesson9-投影矩阵
  * @Author: lzmxqh 
  * @Date: 2021-03-21 00:10:15 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-03-21 03:43:53
+ * @Last Modified time: 2021-03-22 00:12:40
  */
 /**顶点着色器 */ 
 var vs = `
@@ -60,6 +49,7 @@ var uniformAnim = 0;
 var animTime = 0;
 var uniformProj = 0;
 
+var mat4 = glMatrix.mat4;
 var projectMat = null;
 
 function init() {
@@ -134,7 +124,6 @@ function init() {
 }
 
 function onStart() {
-    // addScript("../node_modules/gl-matrix/esm/mat4.js");
     init();
     onTick();
 }
