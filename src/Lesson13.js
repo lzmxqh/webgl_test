@@ -1,31 +1,20 @@
-import * as glMatrix from "../node_modules/gl-matrix/esm/common.js";
-import * as mat2 from "../node_modules/gl-matrix/esm/mat2.js";
-import * as mat2d from "../node_modules/gl-matrix/esm/mat2d.js";
-import * as mat3 from "../node_modules/gl-matrix/esm/mat3.js";
-import * as mat4 from "../node_modules/gl-matrix/esm/mat4.js";
-import * as quat from "../node_modules/gl-matrix/esm/quat.js";
-import * as quat2 from "../node_modules/gl-matrix/esm/quat2.js";
-import * as vec2 from "../node_modules/gl-matrix/esm/vec2.js";
-import * as vec3 from "../node_modules/gl-matrix/esm/vec3.js";
-import * as vec4 from "../node_modules/gl-matrix/esm/vec4.js";
-export { glMatrix, mat2, mat2d, mat3, mat4, quat, quat2, vec2, vec3, vec4 };
-
 /**
- * Lesson12-纹理
+ * Lesson13-点精灵
  * @Author: lzmxqh 
- * @Date: 2021-03-21 19:06:25 
- * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-03-23 00:35:56
+ * @Date: 2021-03-23 00:36:51 
+ * @Last Modified by:   lzmxqh 
+ * @Last Modified time: 2021-03-23 00:36:51 
  */
 /**顶点着色器 */ 
 var vs = `
     attribute vec3 v3Position;
-    attribute vec2 inUV;
     uniform mat4 proj;
-    varying vec2 outUV;
+    uniform float angle;
     void main() {
-        gl_Position = proj * vec4(v3Position, 1.0);
-        outUV = inUV;
+        gl_PointSize = 16.0;
+        float x = length(v3Position) * cos(angle);
+        float y = length(v3Position) * sin(angle);
+        gl_Position = proj * vec4(v3Position.x + x, v3Position.y + y, v3Position.z, 1.0);
     }
 `;
 
@@ -33,10 +22,12 @@ var vs = `
 var fs = `
     precision mediump float;
     uniform sampler2D texture;
-    uniform float anim;
-    varying vec2 outUV;
     void main() {
-        gl_FragColor = texture2D(texture, vec2(outUV.s + anim, outUV.t + anim));
+        vec4 color = texture2D(texture, gl_PointCoord);
+        if (color.w < 0.1) {
+            discard;
+        }
+        gl_FragColor = color;
     }
 `;
 
@@ -44,18 +35,18 @@ var webgl = null;
 var vertexShaderObject = null;
 var fragmentShaderObject = null;
 var programObject = null;
-var triangleBuffer = null;
+var vertexBuffer = null;
 var v3PositionIndex = 0;
 
-var uniformAnim = 0;
-var animStep = 0;
-
+var mat4 = glMatrix.mat4;
 var projectMat = null;
 var uniformProj = 0;
 
+var uniformAngle = 0;
+var angle = 0;
+
 var textureHandle = null;
 var uniformTexture = 0;
-var attrUV = 1;
 
 function onStart() {
     init();
@@ -105,30 +96,28 @@ function init() {
     webgl.useProgram(programObject);
 
     webgl.bindAttribLocation(programObject, v3PositionIndex, "v3Position");
-    webgl.bindAttribLocation(programObject, attrUV, "inUV");
 
     uniformProj = webgl.getUniformLocation(programObject, "proj");
     uniformTexture = webgl.getUniformLocation(programObject, "texture");
-    uniformAnim = webgl.getUniformLocation(programObject, "anim");
+    uniformAngle = webgl.getUniformLocation(programObject, "angle");
 
     webgl.uniformMatrix4fv(uniformProj, false, projectMat);
 
-    var jsArrayData = [
-        0, 0, 0, 0.0, 0.0,
-        400, 0, 0, 2.0, 0.0,
-        400, 400, 0, 2.0, 2.0,
-
-        0, 0, 0, 0.0, 0.0,
-        400, 400, 0, 2.0, 2.0,
-        0, 400, 0, 0.0, 2.0
-    ];
+    var dataPoint = new Float32Array(100 * 3);
+    for (var i = 0; i < 100; i++) {
+        dataPoint[i * 3 + 0] = Math.random() * 500;
+        dataPoint[i * 3 + 1] = Math.random() * 500;
+        dataPoint[i * 3 + 2] = 0;
+    }
     
-    triangleBuffer = webgl.createBuffer();
-    webgl.bindBuffer(webgl.ARRAY_BUFFER, triangleBuffer);
-    webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array(jsArrayData), webgl.STATIC_DRAW); 
+    vertexBuffer = webgl.createBuffer();
+    webgl.bindBuffer(webgl.ARRAY_BUFFER, vertexBuffer);
+    webgl.bufferData(webgl.ARRAY_BUFFER, dataPoint, webgl.STATIC_DRAW); 
+    webgl.enable(webgl.BLIND);
+    webgl.blendFunc(webgl.SRC_ALPHA, webgl.ONE_MINUS_SRC_ALPHA);
 
     // chrome软件目标路径加上 --allow-file-access-from-files
-    initTexture("./res/2.jpg");
+    initTexture("./res/1.png");
 }
 
 function initTexture(imageFile) {
@@ -149,12 +138,10 @@ function handleLoadedTexture(texture) {
     webgl.texImage2D(webgl.TEXTURE_2D, 0, webgl.RGBA, webgl.RGBA, webgl.UNSIGNED_BYTE, texture.image);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.MIRRORED_REPEAT);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.MIRRORED_REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.REPEAT);
 
     webgl.bindTexture(webgl.TEXTURE_2D, null);
-
-    
 }
 
 function onRender() {
@@ -162,25 +149,22 @@ function onRender() {
     webgl.clear(webgl.COLOR_BUFFER_BIT | webgl.DEPTH_BUFFER_BIT);
     webgl.enable(webgl.DEPTH_TEST);
 
-    webgl.bindBuffer(webgl.ARRAY_BUFFER, triangleBuffer);
-
-    animStep += 0.01;
+    webgl.bindBuffer(webgl.ARRAY_BUFFER, vertexBuffer);
 
     webgl.useProgram(programObject);
-    {
-        webgl.uniform1f(uniformAnim, animStep);
-        
+    {        
+        angle += 1;
+
         webgl.activeTexture(webgl.TEXTURE0);
-        webgl.uniform1i(uniformTexture, 0);
         webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
-    
+        webgl.uniform1i(uniformTexture, 0);
+        webgl.uniform1f(uniformAngle, angle * Math.PI / 180);
+
         webgl.enableVertexAttribArray(v3PositionIndex);
-        webgl.enableVertexAttribArray(attrUV);
 
-        webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 5, 0);
-        webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 5, 4 * 3);
+        webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 3, 0);
 
-        webgl.drawArrays(webgl.TRIANGLES, 0, 6);
+        webgl.drawArrays(webgl.POINTS, 0, 100);
     }
     webgl.useProgram(null);
 }
