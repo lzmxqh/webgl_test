@@ -15,7 +15,7 @@ export { glMatrix, mat2, mat2d, mat3, mat4, quat, quat2, vec2, vec3, vec4 };
  * @Author: lzmxqh 
  * @Date: 2021-03-21 19:06:25 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-03-22 00:54:11
+ * @Last Modified time: 2021-03-22 23:18:49
  */
 /**顶点着色器 */ 
 var vs = `
@@ -148,8 +148,8 @@ function handleLoadedTexture(texture) {
     webgl.texImage2D(webgl.TEXTURE_2D, 0, webgl.RGB, webgl.RGB, webgl.UNSIGNED_BYTE, texture.image);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.CLAMP_TO_EDGE);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.CLAMP_TO_EDGE);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.REPEAT);
 
     webgl.bindTexture(webgl.TEXTURE_2D, null);
 }
