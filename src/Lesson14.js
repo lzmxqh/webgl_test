@@ -1,20 +1,19 @@
 /**
- * Lesson13-点精灵
+ * Lesson14-多纹理
  * @Author: lzmxqh 
- * @Date: 2021-03-23 00:36:51 
+ * @Date: 2021-03-23 21:51:32 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-03-23 21:53:56
+ * @Last Modified time: 2021-03-23 22:35:47
  */
 /**顶点着色器 */ 
 var vs = `
     attribute vec3 v3Position;
+    attribute vec2 inUV;
     uniform mat4 proj;
-    uniform float angle;
+    varying vec2 outUV;
     void main() {
-        gl_PointSize = 16.0;
-        float x = length(v3Position) * cos(angle);
-        float y = length(v3Position) * sin(angle);
-        gl_Position = proj * vec4(v3Position.x + x, v3Position.y + y, v3Position.z, 1.0);
+        gl_Position = proj * vec4(v3Position, 1.0);
+        outUV = inUV;
     }
 `;
 
@@ -22,12 +21,13 @@ var vs = `
 var fs = `
     precision mediump float;
     uniform sampler2D texture;
+    uniform sampler2D texture1;
+    uniform float anim;
+    varying vec2 outUV;
     void main() {
-        vec4 color = texture2D(texture, gl_PointCoord);
-        if (color.w < 0.1) {
-            discard;
-        }
-        gl_FragColor = color;
+        vec4 color = texture2D(texture, outUV);
+        vec4 color1 = texture2D(texture1, vec2(outUV.s + anim, outUV.t + anim));
+        gl_FragColor = color * color1;
     }
 `;
 
@@ -35,18 +35,22 @@ var webgl = null;
 var vertexShaderObject = null;
 var fragmentShaderObject = null;
 var programObject = null;
-var vertexBuffer = null;
+var triangleBuffer = null;
 var v3PositionIndex = 0;
+
+var uniformAnim = 0;
+var animStep = 0;
 
 var mat4 = glMatrix.mat4;
 var projectMat = null;
 var uniformProj = 0;
 
-var uniformAngle = 0;
-var angle = 0;
-
 var textureHandle = null;
+var textureHandle1 = null;
+
 var uniformTexture = 0;
+var uniformTexture1 = 0;
+var attrUV = 1;
 
 function onStart() {
     init();
@@ -96,40 +100,43 @@ function init() {
     webgl.useProgram(programObject);
 
     webgl.bindAttribLocation(programObject, v3PositionIndex, "v3Position");
+    webgl.bindAttribLocation(programObject, attrUV, "inUV");
 
     uniformProj = webgl.getUniformLocation(programObject, "proj");
     uniformTexture = webgl.getUniformLocation(programObject, "texture");
-    uniformAngle = webgl.getUniformLocation(programObject, "angle");
+    uniformTexture1 = webgl.getUniformLocation(programObject, "texture1");
+    uniformAnim = webgl.getUniformLocation(programObject, "anim");
 
-    webgl.uniformMatrix4fv(uniformProj, false, projectMat);
+    var jsArrayData = [
+        0, 0, 0, 0.0, 0.0,
+        400, 0, 0, 2.0, 0.0,
+        400, 400, 0, 2.0, 2.0,
 
-    var dataPoint = new Float32Array(100 * 3);
-    for (var i = 0; i < 100; i++) {
-        dataPoint[i * 3 + 0] = Math.random() * 500;
-        dataPoint[i * 3 + 1] = Math.random() * 500;
-        dataPoint[i * 3 + 2] = 0;
-    }
+        0, 0, 0, 0.0, 0.0,
+        400, 400, 0, 2.0, 2.0,
+        0, 400, 0, 0.0, 2.0
+    ];
     
-    vertexBuffer = webgl.createBuffer();
-    webgl.bindBuffer(webgl.ARRAY_BUFFER, vertexBuffer);
-    webgl.bufferData(webgl.ARRAY_BUFFER, dataPoint, webgl.STATIC_DRAW); 
-    webgl.enable(webgl.BLIND);
-    webgl.blendFunc(webgl.SRC_ALPHA, webgl.ONE_MINUS_SRC_ALPHA);
+    triangleBuffer = webgl.createBuffer();
+    webgl.bindBuffer(webgl.ARRAY_BUFFER, triangleBuffer);
+    webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array(jsArrayData), webgl.STATIC_DRAW); 
 
     // chrome软件目标路径加上 --allow-file-access-from-files
-    initTexture("./res/2.png");
+    textureHandle = initTexture("./res/1.jpg");
+    textureHandle1 = initTexture("./res/2.png");
 }
 
 function initTexture(imageFile) {
     // 创建一个纹理 webgl
-    textureHandle = webgl.createTexture();
+    var texture = webgl.createTexture();
     // 创建一个图片
-    textureHandle.image = new Image();
+    texture.image = new Image();
     // 指定图片的路径
-    textureHandle.image.src = imageFile;
-    textureHandle.image.onload = function() {
-        handleLoadedTexture(textureHandle);
+    texture.image.src = imageFile;
+    texture.image.onload = function() {
+        handleLoadedTexture(texture);
     }
+    return texture;
 }
 
 function handleLoadedTexture(texture) {
@@ -138,8 +145,8 @@ function handleLoadedTexture(texture) {
     webgl.texImage2D(webgl.TEXTURE_2D, 0, webgl.RGBA, webgl.RGBA, webgl.UNSIGNED_BYTE, texture.image);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.REPEAT);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.MIRRORED_REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.MIRRORED_REPEAT);
 
     webgl.bindTexture(webgl.TEXTURE_2D, null);
 }
@@ -149,22 +156,30 @@ function onRender() {
     webgl.clear(webgl.COLOR_BUFFER_BIT | webgl.DEPTH_BUFFER_BIT);
     webgl.enable(webgl.DEPTH_TEST);
 
-    webgl.bindBuffer(webgl.ARRAY_BUFFER, vertexBuffer);
+    webgl.bindBuffer(webgl.ARRAY_BUFFER, triangleBuffer);
+
+    animStep += 0.01;
 
     webgl.useProgram(programObject);
-    {        
-        angle += 1;
-
+    {
+        webgl.uniformMatrix4fv(uniformProj, false, projectMat);
+        webgl.uniform1f(uniformAnim, animStep);
+        
         webgl.activeTexture(webgl.TEXTURE0);
         webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
         webgl.uniform1i(uniformTexture, 0);
-        webgl.uniform1f(uniformAngle, angle * Math.PI / 180);
 
+        webgl.activeTexture(webgl.TEXTURE1);
+        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle1);
+        webgl.uniform1i(uniformTexture1, 1);
+    
         webgl.enableVertexAttribArray(v3PositionIndex);
+        webgl.enableVertexAttribArray(attrUV);
 
-        webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 3, 0);
+        webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 5, 0);
+        webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 5, 4 * 3);
 
-        webgl.drawArrays(webgl.POINTS, 0, 100);
+        webgl.drawArrays(webgl.TRIANGLES, 0, 6);
     }
     webgl.useProgram(null);
 }

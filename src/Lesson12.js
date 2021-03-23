@@ -128,7 +128,7 @@ function init() {
     webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array(jsArrayData), webgl.STATIC_DRAW); 
 
     // chrome软件目标路径加上 --allow-file-access-from-files
-    initTexture("./res/2.jpg");
+    initTexture("./res/1.jpg");
 }
 
 function initTexture(imageFile) {
