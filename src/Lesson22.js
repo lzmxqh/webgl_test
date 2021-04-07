@@ -1,9 +1,9 @@
 /**
- * Lesson20-纹理滤波
+ * Lesson22-键盘控制三维物体
  * @Author: lzmxqh 
  * @Date: 2021-04-07 22:01:45 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-04-07 22:54:27
+ * @Last Modified time: 2021-04-07 23:18:38
  */
 /**顶点着色器 */ 
 var vs = `
@@ -27,7 +27,7 @@ var fs = `
     varying vec2 outUV;
     uniform sampler2D texture;
     void main() {
-        gl_FragColor = texture2D(texture, outUV);
+        gl_FragColor = texture2D(texture, outUV) * outColor;
     }
 `;
 
@@ -49,27 +49,27 @@ var mat4 = glMatrix.mat4;
 var projectMat = mat4.create();
 
 var rPyramid = 0;
+var varTransZ = 0;
+var varTransX =0;
+var varRot = 0;
+var varScale = 1;
 
 function handleKeyDown(event) {
-    if (String.fromCharCode(event.keyCode) == "F") {
-        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
-
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.LINEAR);
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.LINEAR);
+    if (String.fromCharCode(event.keyCode) == "W") {
+        varTransZ -= 1;
+    } else if (String.fromCharCode(event.keyCode) == "S") {
+        varTransZ += 1;
+    } else if (String.fromCharCode(event.keyCode) == "A") {
+        varTransX -= 1;
+    } else if (String.fromCharCode(event.keyCode) == "D") {
+        varTransX += 1;
+    } else if (String.fromCharCode(event.keyCode) == "R") {
+        varRot += 1;
+    } else if (String.fromCharCode(event.keyCode) == "Z") {
+        varScale += 0.1;
+    } else if (String.fromCharCode(event.keyCode) == "X") {
+        varScale -= 0.1;
     }
-    if (String.fromCharCode(event.keyCode) == "N") {
-        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
-
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
-    }
-    if (String.fromCharCode(event.keyCode) == "M") {
-        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
-
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
-        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.LINEAR_MIPMAP_NEAREST);
-    }
-    // alert(webgl.getSupportedExtensions());
 }
 
 function handleKeyUp(event) {
@@ -241,11 +241,15 @@ function onRender() {
     var mvp = mat4.create();
     var matTrans = mat4.create();
     var matRot = mat4.create();
+    var matScale = mat4.create();
     var matModel = mat4.create();
+    var matAll = mat4.create();
 
     mat4.identity(matTrans);
     mat4.identity(matRot);
+    mat4.identity(matScale);
     mat4.identity(matModel);
+    mat4.identity(matAll);
 
     webgl.activeTexture(webgl.TEXTURE0);
     webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
@@ -253,12 +257,15 @@ function onRender() {
 
     rPyramid += 1;
 
-    mat4.translate(matTrans, matTrans, [0.0, 0.0, -4.0]);
-    // mat4.rotate(matRot, matRot, degToRad(rPyramid), [1.0, 1.0, 1.0]);
+    mat4.translate(matTrans, matTrans, [varTransX, 0.0, varTransZ]);
+    mat4.rotate(matRot, matRot, degToRad(varRot), [1.0, 1.0, 1.0]);
+    mat4.scale(matScale, matScale, [varScale, 1, 1]);
 
-    // mat4.multiply(matModel, matTrans, matRot);
+    mat4.multiply(matModel, matTrans, matRot);
 
-    mat4.multiply(mvp, projectMat, matModel);
+    mat4.multiply(matAll, matModel, matScale);
+
+    mat4.multiply(mvp, projectMat, matAll);
 
     webgl.useProgram(programObject);
     {
