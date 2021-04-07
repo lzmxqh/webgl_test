@@ -1,19 +1,22 @@
 /**
- * Lesson15-投影矩阵-立方体
+ * Lesson20-纹理滤波
  * @Author: lzmxqh 
- * @Date: 2021-03-23 21:51:32 
+ * @Date: 2021-04-07 22:01:45 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-04-07 22:48:45
+ * @Last Modified time: 2021-04-07 22:49:15
  */
 /**顶点着色器 */ 
 var vs = `
     attribute vec3 v3Position;
     attribute vec4 inColor;
+    attribute vec2 inUV;
     uniform mat4 proj;
     varying vec4 outColor;
+    varying vec2 outUV;
     void main() {
         gl_Position = proj * vec4(v3Position, 1.0);
         outColor = inColor;
+        outUV = inUV;
     }
 `;
 
@@ -21,8 +24,10 @@ var vs = `
 var fs = `
     precision mediump float;
     varying vec4 outColor;
+    varying vec2 outUV;
+    uniform sampler2D texture;
     void main() {
-        gl_FragColor = outColor;
+        gl_FragColor = texture2D(texture, outUV) * outColor;
     }
 `;
 
@@ -34,6 +39,7 @@ var triangleBuffer = null;
 
 var v3PositionIndex = 0;
 var attrColor = 0;
+var attrUV = 0;
 
 var uniformProj = 0;
 var uniformTexture = 0;
@@ -44,8 +50,38 @@ var projectMat = mat4.create();
 
 var rPyramid = 0;
 
+function handleKeyDown(event) {
+    if (String.fromCharCode(event.keyCode) == "F") {
+        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
+
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.LINEAR);
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.LINEAR);
+    }
+    if (String.fromCharCode(event.keyCode) == "N") {
+        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
+
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
+    }
+    if (String.fromCharCode(event.keyCode) == "M") {
+        webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
+
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
+        webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.LINEAR_MIPMAP_NEAREST);
+    }
+    // alert(webgl.getSupportedExtensions());
+}
+
+function handleKeyUp(event) {
+    
+}
+
 function onStart() {
+    document.onkeydown = handleKeyDown;
+    document.onkeyup = handleKeyUp; 
+    // 初始化
     init();
+    // 进入游戏循环
     onTick();
 }
 
@@ -97,6 +133,7 @@ function init() {
     uniformTexture = webgl.getUniformLocation(programObject, "texture");
 
     attrColor = webgl.getAttribLocation(programObject, "inColor");
+    attrUV = webgl.getAttribLocation(programObject, "inUV");
 
     var boxVertex = [
         // 正面
@@ -159,7 +196,7 @@ function init() {
     webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array(boxVertex), webgl.STATIC_DRAW); 
 
     // chrome软件目标路径加上 --allow-file-access-from-files
-    // textureHandle = initTexture("./res/1.jpg");
+    textureHandle = initTexture("./res/1.jpg");
     // textureHandle1 = initTexture("./res/2.png");
 }
 
@@ -210,12 +247,16 @@ function onRender() {
     mat4.identity(matRot);
     mat4.identity(matModel);
 
+    webgl.activeTexture(webgl.TEXTURE0);
+    webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
+    webgl.uniform1i(uniformTexture, 0);
+
     rPyramid += 1;
 
     mat4.translate(matTrans, matTrans, [0.0, 0.0, -4.0]);
-    mat4.rotate(matRot, matRot, degToRad(rPyramid), [1.0, 1.0, 1.0]);
+    // mat4.rotate(matRot, matRot, degToRad(rPyramid), [1.0, 1.0, 1.0]);
 
-    mat4.multiply(matModel, matTrans, matRot);
+    // mat4.multiply(matModel, matTrans, matRot);
 
     mat4.multiply(mvp, projectMat, matModel);
 
@@ -225,9 +266,11 @@ function onRender() {
     
         webgl.enableVertexAttribArray(v3PositionIndex);
         webgl.enableVertexAttribArray(attrColor);
+        webgl.enableVertexAttribArray(attrUV);
 
         webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 9, 0);
         webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
+        webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 9, 4 * 3);
 
         webgl.drawArrays(webgl.TRIANGLES, 0, 36);
     }
