@@ -1,9 +1,9 @@
 /**
- * Lesson22-键盘控制三维物体
+ * Lesson23-复合模型变换
  * @Author: lzmxqh 
- * @Date: 2021-04-07 22:01:45 
+ * @Date: 2021-04-07 23:27:11 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-04-08 00:00:28
+ * @Last Modified time: 2021-04-11 20:52:20
  */
 /**顶点着色器 */ 
 var vs = `
@@ -53,6 +53,9 @@ var varTransZ = -5;
 var varTransX = 0;
 var varRot = 45;
 var varScale = 1;
+
+var rotEarth = 0;
+var rotMoon = 0;
 
 function handleKeyDown(event) {
     if (String.fromCharCode(event.keyCode) == "W") {
@@ -229,6 +232,115 @@ function degToRad(degree) {
     return degree * Math.PI / 180;
 }
 
+/**绘画太阳 */
+function drawSun() {
+    var matTrans = mat4.create();
+    var matScale = mat4.create();
+    var matModel = mat4.create();
+    var mvp = mat4.create();
+
+    mat4.identity(matTrans);
+    mat4.identity(matScale);
+    mat4.identity(matModel);
+    mat4.identity(mvp);
+
+    mat4.translate(matTrans, matTrans, [0, 0.0, -80]);
+    mat4.scale(matScale, matScale, [3, 3.0, 3]);
+
+    mat4.multiply(matModel, matTrans, matScale);
+    mat4.multiply(mvp, projectMat, matModel);
+    
+    webgl.uniformMatrix4fv(uniformProj, false, mvp);
+    
+    webgl.enableVertexAttribArray(v3PositionIndex);
+    webgl.enableVertexAttribArray(attrColor);
+    webgl.enableVertexAttribArray(attrUV);
+
+    webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 9, 0);
+    webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 9, 4 * 3);
+    webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
+
+    webgl.drawArrays(webgl.TRIANGLES, 0, 36);
+
+    return matTrans;
+}
+
+/**绘画地球 */
+function drawEarth(matSun) {
+    rotEarth += 1.0;
+
+    var matTrans = mat4.create();
+    var matRot = mat4.create();
+    var matModel = mat4.create();
+    var matAll = mat4.create();
+    var mvp = mat4.create();
+
+    mat4.identity(matTrans);
+    mat4.identity(matRot);
+    mat4.identity(matModel);
+    mat4.identity(matAll);
+    mat4.identity(mvp);
+
+    mat4.translate(matTrans, matTrans, [0, 0.0, -10]);
+    mat4.rotate(matRot, matRot, degToRad(rotEarth), [0, 1.0, 0]);
+
+    mat4.multiply(matModel, matSun, matRot);
+    mat4.multiply(matAll, matModel, matTrans);
+    mat4.multiply(mvp, projectMat, matAll);
+    
+    webgl.uniformMatrix4fv(uniformProj, false, mvp);
+    
+    webgl.enableVertexAttribArray(v3PositionIndex);
+    webgl.enableVertexAttribArray(attrColor);
+    webgl.enableVertexAttribArray(attrUV);
+
+    webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 9, 0);
+    webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 9, 4 * 3);
+    webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
+
+    webgl.drawArrays(webgl.TRIANGLES, 0, 36);
+
+    return matAll;
+}
+
+/**绘画月球 */
+function drawMoon(matEarth) {
+    rotMoon += 1.0;
+
+    var matTrans = mat4.create();
+    var matRot = mat4.create();
+    var matModel = mat4.create();
+    var matAll = mat4.create();
+    var mvp = mat4.create();
+
+    mat4.identity(matTrans);
+    mat4.identity(matRot);
+    mat4.identity(matModel);
+    mat4.identity(matAll);
+    mat4.identity(mvp);
+
+    mat4.translate(matTrans, matTrans, [0, 0.0, -6]);
+    mat4.rotate(matRot, matRot, degToRad(rotMoon), [0, 1.0, 0]);
+
+    mat4.multiply(matModel, matEarth, matRot);
+    mat4.multiply(matAll, matModel, matTrans);
+    mat4.multiply(mvp, projectMat, matAll);
+    
+    webgl.uniformMatrix4fv(uniformProj, false, mvp);
+    
+    webgl.enableVertexAttribArray(v3PositionIndex);
+    webgl.enableVertexAttribArray(attrColor);
+    webgl.enableVertexAttribArray(attrUV);
+
+    webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 9, 0);
+    webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 9, 4 * 3);
+    webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
+
+    webgl.drawArrays(webgl.TRIANGLES, 0, 36);
+
+    return matAll;
+}
+
 function onRender() {
     // 设置重绘背景的颜色
     webgl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -238,49 +350,19 @@ function onRender() {
     // 指定绘制所使用的顶点数据 从 缓冲区中获取
     webgl.bindBuffer(webgl.ARRAY_BUFFER, triangleBuffer);
 
-    var mvp = mat4.create();
-    var matTrans = mat4.create();
-    var matRot = mat4.create();
-    var matScale = mat4.create();
-    var matModel = mat4.create();
-    var matAll = mat4.create();
-
-    mat4.identity(matTrans);
-    mat4.identity(matRot);
-    mat4.identity(matScale);
-    mat4.identity(matModel);
-    mat4.identity(matAll);
-
+    webgl.useProgram(programObject);
+   
+    var sunMat = mat4.create();
+    mat4.identity(sunMat);
+    
     webgl.activeTexture(webgl.TEXTURE0);
     webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
     webgl.uniform1i(uniformTexture, 0);
 
-    rPyramid += 1;
-
-    mat4.translate(matTrans, matTrans, [varTransX, 0.0, varTransZ]);
-    mat4.rotate(matRot, matRot, degToRad(varRot), [1.0, 1.0, 1.0]);
-    mat4.scale(matScale, matScale, [varScale, 1, 1]);
-
-    mat4.multiply(matModel, matTrans, matRot);
-
-    mat4.multiply(matAll, matModel, matScale);
-
-    mat4.multiply(mvp, projectMat, matAll);
-
-    webgl.useProgram(programObject);
-    {
-        webgl.uniformMatrix4fv(uniformProj, false, mvp);
+    var matSun = drawSun();
+    var matEarth = drawEarth(matSun);
+    var matMoon = drawMoon(matEarth);
     
-        webgl.enableVertexAttribArray(v3PositionIndex);
-        webgl.enableVertexAttribArray(attrColor);
-        webgl.enableVertexAttribArray(attrUV);
-
-        webgl.vertexAttribPointer(v3PositionIndex, 3, webgl.FLOAT, false, 4 * 9, 0);
-        webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
-        webgl.vertexAttribPointer(attrUV, 2, webgl.FLOAT, false, 4 * 9, 4 * 3);
-
-        webgl.drawArrays(webgl.TRIANGLES, 0, 36);
-    }
     webgl.useProgram(null);
 }
 
