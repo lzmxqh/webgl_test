@@ -1,9 +1,13 @@
 /**
- * Lesson27-鼠标控制场景
+ * Lesson29-实现第一人称摄像机控制
+ * 如何拾取，选择三维中的物体，射线的学习
+ * 1. 坐标转换，将屏幕坐标转化为三维的坐标
+ * 2. 射线法
+ * 3. 包围盒
  * @Author: lzmxqh 
- * @Date: 2021-04-22 01:57:52 
+ * @Date: 2021-04-22 22:46:02 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-04-22 22:26:18
+ * @Last Modified time: 2021-04-23 01:23:57
  */
 /**顶点着色器 */ 
 var vs = `
@@ -27,7 +31,7 @@ var fs = `
     varying vec2 outUV;
     uniform sampler2D texture;
     void main() {
-        gl_FragColor = texture2D(texture, outUV) * outColor;
+        gl_FragColor = texture2D(texture, outUV);
     }
 `;
 
@@ -44,20 +48,28 @@ var attrUV = 0;
 var uniformProj = 0;
 var uniformTexture = 0;
 var textureHandle = null;
+// 绘制地面适用的纹理句柄
+var textureGround;
 
 // 动态存储ColorBuffer
 var textureDynamic = null;
 // fbo包含颜色，深度，模板缓冲区
 var fbo;
 
+var vec3 = glMatrix.vec3;
 var mat4 = glMatrix.mat4;
 var projectMat = mat4.create();
-var orthoMat = mat4.create();
+var viewMat = mat4.create();
+
+var cameraEye = new Float32Array(3);
+var cameraCenter = new Float32Array(3);
+var cameraUp = new Float32Array(3);
+var cameraLookAt = new Float32Array(3);
 
 var texWidth = 0;
 var texHeight = 0;
 
-var varTransZ = -5;
+var varTransZ = -4;
 var varTransX = 0;
 
 var varRotX = 0;
@@ -106,12 +118,67 @@ function handleMouseMove(event) {
     lastMouseY = event.clientY;
 }
 
+function handleKeyDown(event) {
+    if (String.fromCharCode(event.keyCode) == "W") {
+        cameraEye[0] += cameraLookAt[0] * 2;
+        cameraEye[1] += 0;
+        cameraEye[2] += cameraLookAt[2] * 2;
+
+        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 2;
+        cameraCenter[1] = cameraEye[1] + 0;
+        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 2;
+    } else if (String.fromCharCode(event.keyCode) == "S") {
+        cameraEye[0] -= cameraLookAt[0] * 2;
+        cameraEye[1] -= 0;
+        cameraEye[2] -= cameraLookAt[2] * 2;
+
+        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 2;
+        cameraCenter[1] = cameraEye[1] + 0;
+        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 2;
+    } else if (String.fromCharCode(event.keyCode) == "A") {
+        var right = vec3.create();
+        vec3.cross(right, cameraUp, cameraLookAt);
+        right[0] *= 2;
+        right[1] *= 2;
+        right[2] *= 2;
+
+        cameraEye[0] += right[0];
+        cameraEye[1] += right[1];
+        cameraEye[2] += right[2];
+
+        cameraCenter[0] += right[0];
+        cameraCenter[1] += right[1];
+        cameraCenter[2] += right[2];
+    } else if (String.fromCharCode(event.keyCode) == "D") {
+        var right = vec3.create();
+        vec3.cross(right, cameraUp, cameraLookAt);
+        right[0] *= -2;
+        right[1] *= -2;
+        right[2] *= -2;
+
+        cameraEye[0] += right[0];
+        cameraEye[1] += right[1];
+        cameraEye[2] += right[2];
+
+        cameraCenter[0] += right[0];
+        cameraCenter[1] += right[1];
+        cameraCenter[2] += right[2];
+    }
+}
+
+function handleKeyUp(event) {
+    
+}
+
 function onStart() {
     // 初始化
     var canvas = init();
     canvas.onmousedown = handleMouseDown;
     canvas.onmouseup = handleMouseUp;
     canvas.onmousemove = handleMouseMove; 
+
+    document.onkeydown = handleKeyDown;
+    document.onkeyup = handleKeyUp;
 
     // 进入游戏循环
     onTick();
@@ -126,8 +193,25 @@ function init() {
     
     texWidth = canvas.clientWidth;
     texHeight = canvas.clientHeight;
-    mat4.ortho(orthoMat, 0, canvas.clientWidth, canvas.clientHeight, 0, -1.0, 1.0);
+
+    cameraEye[0] = 10;
+    cameraEye[1] = 0;
+    cameraEye[2] = 10;
+
+    cameraCenter[0] = 0;
+    cameraCenter[1] = 0;
+    cameraCenter[2] = 0;
+
+    cameraUp[0] = 0;
+    cameraUp[1] = 1;
+    cameraUp[2] = 0;
+
+    vec3.subtract(cameraLookAt, cameraCenter, cameraEye);
+    vec3.normalize(cameraLookAt, cameraLookAt);
+
     mat4.perspective(projectMat, 45, canvas.clientWidth / canvas.clientHeight, 0.1, 100.0);
+
+    mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
         
     vertexShaderObject = webgl.createShader(webgl.VERTEX_SHADER);
     fragmentShaderObject = webgl.createShader(webgl.FRAGMENT_SHADER);
@@ -168,6 +252,11 @@ function init() {
 
     attrColor = webgl.getAttribLocation(programObject, "inColor");
     attrUV = webgl.getAttribLocation(programObject, "inUV");
+
+    // 绘制地面的数据
+    var gSize = 100;
+    var gPos = -10;
+    var rept = 20;
 
     var boxVertex = [
         // 正面
@@ -223,6 +312,14 @@ function init() {
         -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
         -1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0,
         -1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0,
+
+        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1,0,
+        gSize, gPos, -gSize, rept, 0.0, 1.0, 1.0, 1.0, 1,0,
+        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1,0,
+
+        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1,0,
+        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1,0,
+        -gSize, gPos, gSize, 0.0, rept, 1.0, 1.0, 1.0, 1,0,
     ];
     
     triangleBuffer = webgl.createBuffer();
@@ -231,6 +328,7 @@ function init() {
 
     // chrome软件目标路径加上 --allow-file-access-from-files
     textureHandle = initTexture("./res/1.jpg");
+    textureGround = initTexture("./res/1.jpg");
     
     fbo = createFBO(canvas.clientWidth, canvas.clientHeight);
 
@@ -291,8 +389,8 @@ function handleLoadedTexture(texture) {
     webgl.texImage2D(webgl.TEXTURE_2D, 0, webgl.RGBA, webgl.RGBA, webgl.UNSIGNED_BYTE, texture.image);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.LINEAR);
     webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.LINEAR);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.CLAMP_TO_EDGE);
-    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.CLAMP_TO_EDGE);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.REPEAT);
+    webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.REPEAT);
 
     webgl.bindTexture(webgl.TEXTURE_2D, null);
 }
@@ -358,6 +456,10 @@ function renderScene() {
 
     renderToFBO();
 
+    mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
+
+    varRotFBOX += 1;
+
     // 使用原生FBO
     webgl.bindFramebuffer(webgl.FRAMEBUFFER, null);
     webgl.viewport(0, 0, texWidth, texHeight);
@@ -375,27 +477,29 @@ function renderScene() {
     var matRotX = mat4.create();
     var matRotY = mat4.create();
     var matRot = mat4.create();
+    var matTemp = mat4.create();
     var matModel = mat4.create();
 
     mat4.identity(matTrans);
     mat4.identity(matRotX);
     mat4.identity(matRotY);
     mat4.identity(matRot);
+    mat4.identity(matTemp);
     mat4.identity(matModel);
-
-    // varRot += 1;
 
     webgl.activeTexture(webgl.TEXTURE0);
     webgl.bindTexture(webgl.TEXTURE_2D, textureDynamic);
     webgl.uniform1i(uniformTexture, 0);
 
-    mat4.translate(matTrans, matTrans, [varTransX, 0.0, varTransZ]);
-    mat4.rotate(matRotX, matRotX, degToRad(varRotX), [0.0, 1.0, 0.0]);
-    mat4.rotate(matRotY, matRotY, degToRad(varRotY), [1.0, 0.0, 0.0]);
+    mat4.translate(matTrans, matTrans, [0, 0.0, 0]);
+    mat4.rotate(matRotX, matRotX, degToRad(varRotFBOX), [0.0, 1.0, 0.0]);
+    mat4.rotate(matRotY, matRotY, degToRad(varRotFBOY), [1.0, 0.0, 0.0]);
 
     mat4.multiply(matRot, matRotY, matRotX);
     mat4.multiply(matModel, matTrans, matRot);
-    mat4.multiply(mvp, projectMat, matModel);
+
+    mat4.multiply(matTemp, projectMat, viewMat);
+    mat4.multiply(mvp, matTemp, matModel);
 
     webgl.uniformMatrix4fv(uniformProj, false, mvp);
 
@@ -408,6 +512,12 @@ function renderScene() {
     webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
 
     webgl.drawArrays(webgl.TRIANGLES, 0, 36);
+
+    mat4.multiply(mvp, projectMat, viewMat);
+    webgl.uniformMatrix4fv(uniformProj, false, mvp);
+    webgl.bindTexture(webgl.TEXTURE_2D, textureGround);
+    
+    webgl.drawArrays(webgl.TRIANGLES, 36, 6);
 }
 
 function onTick() {
