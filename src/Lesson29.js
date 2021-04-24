@@ -1,5 +1,5 @@
 /**
- * Lesson29-实现第一人称摄像机控制
+ * Lesson29，30-实现第一人称摄像机控制
  * 如何拾取，选择三维中的物体，射线的学习
  * 1. 坐标转换，将屏幕坐标转化为三维的坐标
  * 2. 射线法
@@ -7,7 +7,7 @@
  * @Author: lzmxqh 
  * @Date: 2021-04-22 22:46:02 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-04-23 01:23:57
+ * @Last Modified time: 2021-04-25 00:56:35
  */
 /**顶点着色器 */ 
 var vs = `
@@ -47,7 +47,7 @@ var attrUV = 0;
 
 var uniformProj = 0;
 var uniformTexture = 0;
-var textureHandle = null;
+var textureHandle;
 // 绘制地面适用的纹理句柄
 var textureGround;
 
@@ -120,27 +120,32 @@ function handleMouseMove(event) {
 
 function handleKeyDown(event) {
     if (String.fromCharCode(event.keyCode) == "W") {
-        cameraEye[0] += cameraLookAt[0] * 2;
+        cameraEye[0] += cameraLookAt[0] * 1;
         cameraEye[1] += 0;
-        cameraEye[2] += cameraLookAt[2] * 2;
+        cameraEye[2] += cameraLookAt[2] * 1;
 
-        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 2;
+        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 1;
         cameraCenter[1] = cameraEye[1] + 0;
-        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 2;
+        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 1;
+
+        mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
     } else if (String.fromCharCode(event.keyCode) == "S") {
-        cameraEye[0] -= cameraLookAt[0] * 2;
+        cameraEye[0] -= cameraLookAt[0] * 1;
         cameraEye[1] -= 0;
-        cameraEye[2] -= cameraLookAt[2] * 2;
+        cameraEye[2] -= cameraLookAt[2] * 1;
 
-        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 2;
+        cameraCenter[0] = cameraEye[0] + cameraLookAt[0] * 1;
         cameraCenter[1] = cameraEye[1] + 0;
-        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 2;
+        cameraCenter[2] = cameraEye[2] + cameraLookAt[2] * 1;
+
+        mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
     } else if (String.fromCharCode(event.keyCode) == "A") {
         var right = vec3.create();
         vec3.cross(right, cameraUp, cameraLookAt);
-        right[0] *= 2;
-        right[1] *= 2;
-        right[2] *= 2;
+        vec3.normalize(right, right);
+        right[0] *= 1;
+        right[1] *= 1;
+        right[2] *= 1;
 
         cameraEye[0] += right[0];
         cameraEye[1] += right[1];
@@ -149,12 +154,15 @@ function handleKeyDown(event) {
         cameraCenter[0] += right[0];
         cameraCenter[1] += right[1];
         cameraCenter[2] += right[2];
+
+        mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
     } else if (String.fromCharCode(event.keyCode) == "D") {
         var right = vec3.create();
         vec3.cross(right, cameraUp, cameraLookAt);
-        right[0] *= -2;
-        right[1] *= -2;
-        right[2] *= -2;
+        vec3.normalize(right, right);
+        right[0] *= -1;
+        right[1] *= -1;
+        right[2] *= -1;
 
         cameraEye[0] += right[0];
         cameraEye[1] += right[1];
@@ -163,6 +171,8 @@ function handleKeyDown(event) {
         cameraCenter[0] += right[0];
         cameraCenter[1] += right[1];
         cameraCenter[2] += right[2];
+
+        mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
     }
 }
 
@@ -209,7 +219,7 @@ function init() {
     vec3.subtract(cameraLookAt, cameraCenter, cameraEye);
     vec3.normalize(cameraLookAt, cameraLookAt);
 
-    mat4.perspective(projectMat, 45, canvas.clientWidth / canvas.clientHeight, 0.1, 100.0);
+    mat4.perspective(projectMat, 45, canvas.clientWidth / canvas.clientHeight, 0.1, 10000.0);
 
     mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
         
@@ -245,10 +255,10 @@ function init() {
     }
     webgl.useProgram(programObject);
 
-    webgl.bindAttribLocation(programObject, v3PositionIndex, "v3Position");
-
     uniformProj = webgl.getUniformLocation(programObject, "proj");
     uniformTexture = webgl.getUniformLocation(programObject, "texture");
+
+    v3PositionIndex = webgl.getAttribLocation(programObject, "v3Position");
 
     attrColor = webgl.getAttribLocation(programObject, "inColor");
     attrUV = webgl.getAttribLocation(programObject, "inUV");
@@ -313,13 +323,13 @@ function init() {
         -1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0,
         -1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0,
 
-        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1,0,
-        gSize, gPos, -gSize, rept, 0.0, 1.0, 1.0, 1.0, 1,0,
-        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1,0,
+        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+        gSize, gPos, -gSize, rept, 0.0, 1.0, 1.0, 1.0, 1.0,
+        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1.0,
 
-        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1,0,
-        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1,0,
-        -gSize, gPos, gSize, 0.0, rept, 1.0, 1.0, 1.0, 1,0,
+        -gSize, gPos, -gSize, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+        gSize, gPos, gSize, rept, rept, 1.0, 1.0, 1.0, 1.0,
+        -gSize, gPos, gSize, 0.0, rept, 1.0, 1.0, 1.0, 1.0,
     ];
     
     triangleBuffer = webgl.createBuffer();
@@ -455,8 +465,6 @@ function renderToFBO() {
 function renderScene() {
 
     renderToFBO();
-
-    mat4.lookAt(viewMat, cameraEye, cameraCenter, cameraUp);
 
     varRotFBOX += 1;
 
