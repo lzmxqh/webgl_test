@@ -3,7 +3,7 @@
  * @Author: lzmxqh 
  * @Date: 2021-04-27 23:09:34 
  * @Last Modified by: lzmxqh
- * @Last Modified time: 2021-05-05 23:43:43
+ * @Last Modified time: 2021-05-07 00:12:30
  */
 /**顶点着色器 */ 
 var vs = `
@@ -73,55 +73,47 @@ var times = (new Date()).valueOf();
 var role = {};
 role._position = new Float32Array(3);
 role._target = new Float32Array(3);
-role._speed = 5;
-
-var varTransZ = -4;
-var varTransX = 0;
-
-var varRotX = 0;
-var varRotY = 0;
+role._speed = 10;
 
 var varRotFBOX = 0;
 var varRotFBOY = 0;
 
 var rButtonDown = false;
-
 var lastMouseX = 0;
-var lastMouseY = 0;
 
 function handleMouseDown(event) {
     if (event.button == 0) {
-        // // 计算射线
-        // var minWorld = new Float32Array(3);
-        // var maxWorld = new Float32Array(3);
+        // 计算射线
+        var minWorld = new Float32Array(3);
+        var maxWorld = new Float32Array(3);
 
-        // var screen = new Float32Array(3);
-        // screen[0] = event.offsetX;
-        // screen[1] = event.offsetY;
-        // screen[2] = 0.0;
+        var screen = new Float32Array(3);
+        screen[0] = event.offsetX;
+        screen[1] = event.offsetY;
+        screen[2] = 0.0;
 
-        // var screen1 = new Float32Array(3);
-        // screen1[0] = event.offsetX;
-        // screen1[1] = event.offsetY;
-        // screen1[2] = 1.0;
+        var screen1 = new Float32Array(3);
+        screen1[0] = event.offsetX;
+        screen1[1] = event.offsetY;
+        screen1[2] = 1.0;
 
-        // var minWorld = screenToWorld(screen);
-        // var maxWorld = screenToWorld(screen1);
+        var minWorld = screenToWorld(screen);
+        var maxWorld = screenToWorld(screen1);
 
-        // var dir = new Float32Array(3);
-        // dir[0] = maxWorld[0] - minWorld[0];
-        // dir[1] = maxWorld[1] - minWorld[1];
-        // dir[2] = maxWorld[2] - minWorld[2];
-        // vec3.normalize(dir);
+        var dir = new Float32Array(3);
+        dir[0] = maxWorld[0] - minWorld[0];
+        dir[1] = maxWorld[1] - minWorld[1];
+        dir[2] = maxWorld[2] - minWorld[2];
+        vec3.normalize(dir, dir);
 
-        // // 计算时间
-        // var tm = Math.abs(minWorld[1] / dir[1]);
-        // var target = new Float32Array(3);
-        // target[0] = minWorld[0] + tm * dir[0];
-        // target[1] = minWorld[1] + tm * dir[1];
-        // target[2] = minWorld[2] + tm * dir[2];
+        // 计算时间
+        var tm = Math.abs(minWorld[1] / dir[1]);
+        var target = new Float32Array(3);
+        target[0] = minWorld[0] + tm * dir[0];
+        target[1] = minWorld[1] + tm * dir[1];
+        target[2] = minWorld[2] + tm * dir[2];
         
-        // moveTo(target);
+        moveTo(target);
     } else {
         rButtonDown = true;
         lastMouseX = event.offsetX;
@@ -172,12 +164,14 @@ function init() {
     webgl = canvas.getContext('webgl');
     webgl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
     
+    viewPortW = canvas.clientWidth;
+    viewPortH = canvas.clientHeight;
     texWidth = canvas.clientWidth;
     texHeight = canvas.clientHeight;
 
-    cameraEye[0] = 10;
-    cameraEye[1] = 0;
-    cameraEye[2] = 10;
+    cameraEye[0] = 28.017817;
+    cameraEye[1] = 29.867514;
+    cameraEye[2] = 29.429590;
 
     cameraCenter[0] = -0.84969789;
     cameraCenter[1] = 1;
@@ -419,7 +413,7 @@ function renderToFBO() {
     webgl.bindTexture(webgl.TEXTURE_2D, textureHandle);
     webgl.uniform1i(uniformTexture, 0);
 
-    mat4.translate(matTrans, matTrans, [varTransX, 0.0, varTransZ]);
+    mat4.translate(matTrans, matTrans, [0, 0.0, -4]);
     mat4.rotate(matRotX, matRotX, degToRad(varRotFBOX), [0.0, 1.0, 0.0]);
     mat4.rotate(matRotY, matRotY, degToRad(varRotFBOY), [1.0, 0.0, 0.0]);
 
@@ -438,6 +432,143 @@ function renderToFBO() {
     webgl.vertexAttribPointer(attrColor, 4, webgl.FLOAT, false, 4 * 9, 4 * 5);
 
     webgl.drawArrays(webgl.TRIANGLES, 0, 36);
+}
+
+/**将世界坐标转化为屏幕坐标 */
+function worldToScreen(worldIn) {
+    var world = new Float32Array(4);
+    var screen = new Float32Array(4);
+    var mvp = mat4.create();
+
+    world[0] = worldIn[0];
+    world[1] = worldIn[1];
+    world[2] = worldIn[2];
+    world[3] = 1.0;
+    
+    // 计算mvp矩阵
+    mat4.multiply(mvp, projectMat, viewMat);
+    // 将mvp * world
+    mat4.multiply(screen, mvp, world);
+
+    if (screen[3] == 0.0) {
+        return false;
+    }
+    // 坐标设备化
+    screen[0] /= screen[3];
+    screen[1] /= screen[3];
+    screen[2] /= screen[3];
+
+    // map to range 0-1
+    screen[0] = screen[0] * 0.5 + 0.5;
+    screen[1] = screen[1] * 0.5 + 0.5;
+    screen[2] = screen[2] * 0.5 + 0.5;
+
+    // map to viewport
+    screen[0] = screen[0] * viewPortW;
+    screen[1] = viewPortH - (screen[1] * viewPortH);
+    
+    return screen;
+}
+
+function inverseEx(pData, resData) {
+    var subFactor00 = pData[10] * pData[15] - pData[14] * pData[11];
+    var subFactor01 = pData[9] * pData[15] - pData[13] * pData[11];
+    var subFactor02 = pData[9] * pData[14] - pData[13] * pData[10];
+    var subFactor03 = pData[8] * pData[15] - pData[12] * pData[11];
+    var subFactor04 = pData[8] * pData[14] - pData[12] * pData[10];
+    var subFactor05 = pData[8] * pData[13] - pData[12] * pData[9];
+    var subFactor06 = pData[6] * pData[15] - pData[14] * pData[7];
+    var subFactor07 = pData[5] * pData[15] - pData[13] * pData[7];
+    var subFactor08 = pData[5] * pData[14] - pData[13] * pData[6];
+    var subFactor09 = pData[4] * pData[15] - pData[12] * pData[7];
+    var subFactor10 = pData[4] * pData[14] - pData[12] * pData[6];
+    var subFactor11 = pData[5] * pData[15] - pData[13] * pData[7];
+    var subFactor12 = pData[4] * pData[13] - pData[12] * pData[5];
+    var subFactor13 = pData[6] * pData[11] - pData[10] * pData[7];
+    var subFactor14 = pData[5] * pData[11] - pData[9] * pData[7];
+    var subFactor15 = pData[5] * pData[10] - pData[9] * pData[6];
+    var subFactor16 = pData[4] * pData[11] - pData[8] * pData[7];
+    var subFactor17 = pData[4] * pData[10] - pData[8] * pData[6];
+    var subFactor18 = pData[4] * pData[9] - pData[8] * pData[5];
+
+    resData[0] = +pData[5] * subFactor00 - pData[6] * subFactor01 + pData[7] * subFactor02;
+    resData[1] = -pData[4] * subFactor00 + pData[6] * subFactor03 - pData[7] * subFactor04;
+    resData[2] = +pData[4] * subFactor01 - pData[5] * subFactor03 + pData[7] * subFactor05;
+    resData[3] = -pData[4] * subFactor02 + pData[5] * subFactor04 - pData[6] * subFactor05;
+
+    resData[4] = -pData[1] * subFactor00 + pData[2] * subFactor01 - pData[3] * subFactor02;
+    resData[5] = +pData[0] * subFactor00 - pData[2] * subFactor03 + pData[3] * subFactor04;
+    resData[6] = -pData[0] * subFactor01 + pData[1] * subFactor03 - pData[3] * subFactor05;
+    resData[7] = +pData[0] * subFactor02 - pData[1] * subFactor04 + pData[2] * subFactor05;
+    
+    resData[8] = +pData[1] * subFactor06 - pData[2] * subFactor07 + pData[3] * subFactor08;
+    resData[9] = -pData[0] * subFactor06 + pData[2] * subFactor09 - pData[3] * subFactor10;
+    resData[10] = +pData[0] * subFactor11 - pData[1] * subFactor09 + pData[3] * subFactor12;
+    resData[11] = -pData[0] * subFactor08 + pData[1] * subFactor10 - pData[2] * subFactor12;
+
+    resData[12] = -pData[1] * subFactor13 + pData[2] * subFactor14 - pData[3] * subFactor15;
+    resData[13] = +pData[0] * subFactor13 - pData[2] * subFactor16 + pData[3] * subFactor17;
+    resData[14] = -pData[0] * subFactor14 + pData[1] * subFactor16 - pData[3] * subFactor18;
+    resData[15] = +pData[0] * subFactor15 - pData[1] * subFactor17 + pData[2] * subFactor18;
+
+    var determinant = 
+        +pData[0] * resData[0]
+        +pData[1] * resData[4]
+        +pData[2] * resData[8]
+        +pData[3] * resData[12];
+    
+    for (var i = 0; i < 16; ++i) {
+        resData[i] /= determinant;
+    }
+}
+
+function multiply(mat, v, outv) {
+    outv[0] = mat[0] * v[0] + mat[1] * v[1] + mat[2] * v[2] + mat[3] * v[3];
+    outv[1] = mat[4] * v[0] + mat[5] * v[1] + mat[6] * v[2] + mat[7] * v[3];
+    outv[2] = mat[8] * v[0] + mat[9] * v[1] + mat[10] * v[2] + mat[11] * v[3];
+    outv[3] = mat[12] * v[0] + mat[13] * v[1] + mat[14] * v[2] + mat[15] * v[3];
+}
+
+function screenToWorld(screen) {
+    var v = new Float32Array(4);
+    var world = new Float32Array(4);
+    v[0] = screen[0];
+    v[1] = screen[1];
+    v[2] = screen[2];
+    v[3] = 1.0;
+
+    // map from viewport to 0-1
+    v[0] = (v[0]) /viewPortW;
+    v[1] = (viewPortH - v[1]) / viewPortH;
+
+    // map to range -1 to 1
+    v[0] = v[0] * 2.0 - 1.0;
+    v[1] = v[1] * 2.0 - 1.0;
+    v[2] = v[2] * 2.0 - 1.0;
+
+    var mvp = mat4.create();
+    var mvpInvert = mat4.create();
+    // 计算mvp矩阵
+    mat4.multiply(mvp, projectMat, viewMat);
+
+    // mat4.invert(mvpInvert, mvp);
+    inverseEx(mvp, mvpInvert);
+
+    world[0] = v[0];
+    world[1] = v[1];
+    world[2] = v[2];
+    world[3] = v[3];
+    // mat4.multiply(world, mvpInvert, v);
+    multiply(mvpInvert, v, world);
+
+    if (world[3] == 0.0) {
+        return world;
+    }
+    world[0] /= world[3];
+    world[1] /= world[3];
+    world[2] /= world[3];
+    
+    return world;
 }
 
 function moveTo(targetPos) {
@@ -545,7 +676,7 @@ function renderScene() {
     webgl.bindTexture(webgl.TEXTURE_2D, textureDynamic);
     webgl.uniform1i(uniformTexture, 0);
 
-    mat4.translate(matTrans, matTrans, [0, 0.0, 0]);
+    mat4.translate(matTrans, matTrans, [role._position[0], 0.0, role._position[2]]);
     mat4.rotate(matRotX, matRotX, degToRad(varRotFBOX), [0.0, 1.0, 0.0]);
     mat4.rotate(matRotY, matRotY, degToRad(varRotFBOY), [1.0, 0.0, 0.0]);
 
