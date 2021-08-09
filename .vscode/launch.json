@@ -8,7 +8,7 @@
             "type": "pwa-chrome",
             "request": "launch",
             "name": "Open index.html",
-            "file": "e:\\indie_developer\\webgl\\webgl_test\\index.html",
+            "file": "${workspaceRoot}\\index.html",
             "runtimeArgs": ["--allow-file-access-from-files"]
         }
     ]
